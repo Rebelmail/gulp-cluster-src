@@ -8,7 +8,6 @@ const through2 = require('through2');
 const globStream = require('glob-stream');
 const util = require('gulp-util');
 const minimist = require('minimist');
-const DefaultRegistry = require('undertaker-registry');
 
 require('colors');
 
@@ -18,16 +17,6 @@ require('colors');
     child process.
 */
 const argv = minimist(process.argv.slice(2));
-
-function registryFactory(workerTaskName) {
-    return new class extends DefaultRegistry {
-        set(taskName, task) {
-            if (taskName === workerTaskName) {
-                return super.set(taskName, task);
-            }
-        }
-    };
-}
 
 function getWorkerArgs() {
     const args = [];
@@ -242,8 +231,16 @@ module.exports = function (gulp) {
             This is probably *completely* unsupported and will likely break
             in the future.
             */
-            const taskName = argv._[0];
-            const registry = registryFactory(taskName);
+            const [workerTaskName] = argv._;
+            const { constructor: DefaultRegistry } = Object.getPrototypeOf(gulp.registry());
+            const registry = new class extends DefaultRegistry {
+                set(taskName, task) {
+                    if (taskName === workerTaskName) {
+                        return super.set(taskName, task);
+                    }
+                }
+            };
+
             gulp.registry(registry);
         });
     }

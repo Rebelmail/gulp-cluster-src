@@ -7,7 +7,7 @@
   "license": "MIT",
   "repository": "rossipedia/gulp-cluster-src",
   "engines": {
-    "node": ">=6"
+    "node": ">=8"
   },
   "keywords": [
     "gulpfriendly",
@@ -16,13 +16,10 @@
   "dependencies": {
     "colors": "^1.1.2",
     "glob-stream": "^6.1.0",
-    "gulp": "^3.9.1",
-    "gulp-debug": "^3.1.0",
     "gulp-util": "^3.0.8",
     "minimatch": "^3.0.4",
     "minimist": "^1.2.0",
     "through2": "^2.0.3",
-    "undertaker-registry": "^1.0.1",
     "vinyl": "^2.1.0"
   },
   "devDependencies": {
