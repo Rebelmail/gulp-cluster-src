@@ -1,3 +1,4 @@
+const assert = require('assert');
 const cluster = require('cluster');
 const File = require('vinyl');
 const gs = require('glob-stream');
@@ -6,6 +7,7 @@ const through = require('through2');
 const util = require('gulp-util');
 const os = require('os');
 const minimist = require('minimist');
+const DefaultRegistry = require('undertaker-registry');
 
 require('colors');
 
@@ -15,6 +17,16 @@ require('colors');
     child process.
 */
 const argv = minimist(process.argv.slice(2));
+
+function registryFactory(workerTaskName) {
+    return new class extends DefaultRegistry {
+        set(taskName, task) {
+            if (taskName === workerTaskName) {
+                return super.set(taskName, task);
+            }
+        }
+    };
+}
 
 function getWorkerArgs() {
     const args = [];
@@ -178,7 +190,7 @@ function spawnWorkers(taskName, workerCount, fileStream) {
  * We read the file's contents in here, because sending file contents over the
  * IPC channel would be really dumb.
  */
-function createWorkerFilestream(taskName) {
+function createWorkerFilestream() {
     const fileStream = through.obj();
     const messageHandlers = {
         file(msg) {
@@ -216,21 +228,10 @@ function setupChildPipeline(taskName, builder) {
 }
 
 module.exports = function (gulp) {
-
-    /**
-     * Get the running task name by checking each task registered in
-     * gulp.tasks for the `running` property.
-     */
-    function getRunningTaskName() {
-        return Object.keys(gulp.tasks)
-            .filter(n => gulp.tasks[n].running)
-            .map(n => gulp.tasks[n].name)[0];
-    }
-
     if (cluster.isWorker) {
-        gulp.on('start', function () {
+        gulp.on('start', () => {
             /*
-            We have to hack up gulp's (really Orchestrator's) dependency and
+            We have to override Gulp's (really Undertaker's) dependency and
             task tree in the child process to make it appear as though the
             task we want to run in parallel is the *only* task in the gulpfile.
             Since the task dependencies have already been processed in the
@@ -240,12 +241,9 @@ module.exports = function (gulp) {
             This is probably *completely* unsupported and will likely break
             in the future.
             */
-            const task = gulp.tasks[argv._];
-            task.dep = []; // No dependencies
-            gulp.tasks = {
-                [argv._]: task
-            }; // only a single task
-            gulp.seq = [argv._]; // only this task is queued
+            const taskName = argv._[0];
+            const registry = registryFactory(taskName);
+            gulp.registry(registry);
         });
     }
 
@@ -256,8 +254,9 @@ module.exports = function (gulp) {
         builder = typeof opts === 'function' ? opts : builder;
         opts = typeof opts === 'function' ? {} : opts;
 
-        const taskName = opts.taskName || getRunningTaskName();
+        assert(typeof opts.taskName === 'string', 'opts.taskName is not a string');
 
+        const { taskName } = opts;
         if (cluster.isMaster) {
             const workerCount = +(opts.concurrency || os.cpus().length);
             const fileStream = gs.create(glob, opts);
