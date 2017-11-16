@@ -15,16 +15,17 @@
   ],
   "dependencies": {
     "colors": "^1.1.2",
-    "glob-stream": "^5.3.5",
+    "glob-stream": "^6.1.0",
     "gulp": "^3.9.1",
-    "gulp-debug": "^3.0.0",
+    "gulp-debug": "^3.1.0",
     "gulp-util": "^3.0.8",
-    "minimatch": "^3.0.3",
+    "minimatch": "^3.0.4",
     "minimist": "^1.2.0",
     "through2": "^2.0.3",
-    "vinyl": "^2.0.1"
+    "undertaker-registry": "^1.0.1",
+    "vinyl": "^2.1.0"
   },
   "devDependencies": {
-    "eslint": "^3.12.2"
+    "eslint": "^4.11.0"
   }
 }

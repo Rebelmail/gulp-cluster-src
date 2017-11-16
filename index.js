@@ -1,11 +1,12 @@
+
+const os = require('os');
+const fs = require('fs');
 const assert = require('assert');
 const cluster = require('cluster');
-const File = require('vinyl');
-const gs = require('glob-stream');
-const fs = require('fs');
-const through = require('through2');
+const Vinyl = require('vinyl');
+const through2 = require('through2');
+const globStream = require('glob-stream');
 const util = require('gulp-util');
-const os = require('os');
 const minimist = require('minimist');
 const DefaultRegistry = require('undertaker-registry');
 
@@ -191,12 +192,12 @@ function spawnWorkers(taskName, workerCount, fileStream) {
  * IPC channel would be really dumb.
  */
 function createWorkerFilestream() {
-    const fileStream = through.obj();
+    const fileStream = through2.obj();
     const messageHandlers = {
         file(msg) {
             const file = msg.file;
             file.contents = fs.readFileSync(file.path);
-            fileStream.push(new File(file));
+            fileStream.push(new Vinyl(file));
         },
         end() {
             fileStream.push(null); // We done
@@ -217,7 +218,7 @@ function setupChildPipeline(taskName, builder) {
         We tack this on at the tail end so that whenever we'red
         done with a file, we request a new one from the parent process.
         */
-        .pipe(through.obj((file, enc, done) => {
+        .pipe(through2.obj((file, enc, done) => {
             requestFile();
             done();
         }));
@@ -250,7 +251,7 @@ module.exports = function (gulp) {
     /**
      * The main attraction
      */
-    function clusterSrc(glob, opts, builder) {
+    function clusterSrc(globs, opts, builder) {
         builder = typeof opts === 'function' ? opts : builder;
         opts = typeof opts === 'function' ? {} : opts;
 
@@ -259,7 +260,7 @@ module.exports = function (gulp) {
         const { taskName } = opts;
         if (cluster.isMaster) {
             const workerCount = +(opts.concurrency || os.cpus().length);
-            const fileStream = gs.create(glob, opts);
+            const fileStream = globStream(globs, opts);
             return spawnWorkers(taskName, workerCount, fileStream);
         } else {
             //sendLog(`Task '${taskName.cyan}' STARTING`);
@@ -279,7 +280,7 @@ module.exports = function (gulp) {
             );
         }
 
-        return through.obj((file, enc, done) => {
+        return through2.obj((file, enc, done) => {
             sendLog(file.path);
             done(null, file);
         });
